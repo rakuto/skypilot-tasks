@@ -1,0 +1,51 @@
+name: trtllm
+
+resources:
+  cloud: aws
+  region: us-west-2
+  disk_size: 200
+  instance_type: g5.2xlarge # Make sure set same instance you host inference server.
+  image_id: ami-08960a7e42546e130
+
+# These environment variables are supposed to be overriden by CLI flag --env-file or --env.
+envs:
+  TRTLLM_VERSION: v0.9.0
+  S3_MODEL_URL: s3://models.tne.ai/hf/meta-llama/Meta-Llama-3-8B-Instruct/
+  DTYPE: float16
+  TP_SIZE: 1
+
+setup: |
+  set -e
+  
+  echo "Checkout tensorllm_backend ${TRTLLM_VERSION}"
+  git clone --depth 1 -v "${TRTLLM_VERSION}" https://github.com/triton-inference-server/tensorrtllm_backend
+  cd tensorrtllm_backend && rm -rf tensorrt_llm
+  git clone --depth 1 https://github.com/NVIDIA/TensorRT-LLM -b "${TRTLLM_VERSION}" tensorrt_llm
+  
+  echo "Installing TensorRT-LLM Llama example dependencies"
+  cd tensor_llm/examples/llama
+  pip install -r requirements.txt
+
+#run: |
+#  set -e
+#
+#  cd tensorrt_llm/examples/llama
+#
+#  # Checkout Llama-3 model weights
+#  echo "Download ${S3_MODEL_URL}"
+#  aws s3 sync "${S3_MODEL_URL}" hf_weights
+#
+#  echo "Converting checkpoints for TensorRT-LLM"
+#  python convert_checkpoint.py --model_dir ./hf_weights \
+#                              --output_dir ./tllm_checkpoint \
+#                              --dtype "${DTYPE}" \
+#                              --tp_size "${TP_SIZE}"
+#
+#  echo "Building TensorRT engine"
+#  trtllm-build --checkpoint_dir ./tllm_checkpoint \
+#            --output_dir ./trt_engine \
+#            --gemm_plugin "${DTYPE}"
+#
+#  echo "Building TensorRT-LLM model format for LMI"
+#  mkdir trtllm
+#

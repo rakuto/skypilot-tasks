@@ -1,0 +1,74 @@
+name: trtllm
+
+resources:
+  cloud: aws
+  region: us-west-2
+  instance_type: g5.2xlarge
+  image_id: ami-08960a7e42546e130 # Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.2.0 (Ubuntu 20.04) 20240517
+
+envs:
+  TP_SIZE: 1
+  DTYPE: float16
+  MODEL_ID: Phi-3-mini-4k-instruct
+
+setup: |
+  set -e
+  
+  echo "Install TensorRT-LLM dependencies"
+  sudo apt-get update
+  sudo apt-get install -y openmpi-bin libopenmpi-dev git git-lfs
+  
+  echo "Install TensorRT-LLM" 
+  pip3 install tensorrt_llm -U --pre --extra-index-url https://pypi.nvidia.com
+  if [ ! -d "TensorRT-LLM" ]; then
+    git clone --depth 1 https://github.com/NVIDIA/TensorRT-LLM.git
+  fi
+  
+  echo "Installing Phi dependency"
+  cd TensorRT-LLM/examples/phi
+  pip3 install -r requirements.txt
+  git lfs install
+
+run: |
+  set -e
+  
+  OUTPUT_DIR=""
+  TRTLLM_CHKPT_DIR=./trtllm_checkpoint
+  MODEL_TYPE=${MODEL_ID##*/}
+  MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-8}
+  TRTLLM_ENGINE_DIR=./phi_trtllm_engine
+  
+  cd TensorRT-LLM/examples/llama
+  echo "Check out ${MODEL_TYPE}"
+  if [ -z ${MODEL_ID+x} ]; then
+    git clone --depth 1 https://huggingface.co/${MODEL_ID}
+  elif [ -z ${S3_URL+x} ]; then
+    aws s3 cp "${S3_URL}" model --recursive
+  else
+    echo "Either MODEL_ID or S3_URL must be set"
+    exit -1
+  fi
+  
+  # 
+  echo "Converting HF checkpoint for TensorRT-LLM"
+   python ./convert_checkpoint.py \
+    --model_type $MODEL_TYPE \
+    --model_dir Phi-3-mini-4k-instruct \
+    --output_dir ./phi_checkpoint \
+    --dtype "${DTYPE}"
+ 
+  echo "Building TensorRT engine"
+  trtllm-build --checkpoint_dir ./phi_checkpoint \
+    --output_dir "${TRTLLM_ENGINE_DIR}" \
+    --gemm_plugin ${DTYPE} \
+    --max_batch_size 8 \
+    --max_input_len 4096 \
+    --max_output_len 4096 \
+    --tp_size 1 \
+    --pp_size 1
+ 
+  echo "Uploading TensorRT-LLM"
+  aws s3 cp "${TRTLLM_ENGINE_DIR}/" "" --recursive
+  
+  echo "Cleaning up"
+  rm -rf "${PHI_CKPT_DIR}" "${TRTLLM_ENGINE_DIR}"

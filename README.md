@@ -1,37 +1,54 @@
-# LLM Tasks Toolbox
+# Skypilot tasks for ML applications
 
-Miscellaneous Skypilot tasks for Gen-AI workflow.
+Miscellaneous Skypilot tasks for ML applications.
 
-## Download Hugging Face model and upload to S3 bucket
+## Download Hugging Face model on S3
 
-This task downloads model from Hugging Face and upload to S3.
-
-Create a env file like this. Set Hugging Face model name as `MODEL_ID`.
+The task to download a model from Hugging Face and then upload to S3 bucket.  
+Create `.env` file with following variables, make sure you update variables for your needs.
 
 ```shell
-cat <<-EOF > download-llama-3-8b-instruct.env
-MODEL_ID=meta-llama/Meta-Llama-3-8B-Instruct
-S3_URL=<S3_URL>
-HF_USERNAME=<HF_USERNAME>
-HF_TOKEN=<HF_TOKEN>
-AWS_ACCESS_KEY_ID=<AWS_ACCESS_KEY_ID>
-AWS_SECRET_ACCESS_KEY=<AWS_SECRET_ACCESS_KEY>
-#AWS_SESSION_TOKEN=<AWS_SESSION_TOKEN>
+cd download_model
+
+cat <<-EOF >> .env 
+MODEL_ID=meta-llama/Meta-Llama-3-8B-Instruct 
+S3_URL=s3://model-repo/hf/meta-llama/Meta-Llama-3-8B-Instruct
+HF_REPO_ID=me/Llama3-ChatQA-1.5-8B-GPTQ-4bit
+HF_USERNAME=me
+HF_TOKEN=hf-1234
 EOF
 ```
 
-Then start Skypilot task as follows.
-
 ```shell
-sky launch --env-file download-llama-3-8b-instruct.env hf_model_downloader.yaml 
+sky launch --env-file .env task.yaml 
 ```
 
 In case you reuse existing Skypilot cluster, give `-c` flag in `sky launch`.
 
 ```shell
-sky launch -c <CLUSTER_NAME> 
+sky launch -c $CLUSTER_NAME task.yaml
 ```
 
+## Quantizing model
+
+A task quantizing a text-generation model. 
+
+```shell
+cat <<-EOF >> .env 
+MODEL_ID=nvidia/Llama3-ChatQA-1.5-8B 
+# or MODEL_ID=s3://model-repo/hf/Llama3-ChatQA-1.5-8B
+S3_UPLOAD_URL=s3://model-repo/hf/Llama3-ChatQA-1.5-8B-GPTQ-4bit
+HF_REPO_ID=Rakuto/Llama3-ChatQA-1.5-8B-GPTQ-4bit
+HF_TOKEN=<HF_TOKEN>
+EOF
+```
+
+Launch Managed Spot jobs that any spot preemptions are automatically 
+handled by SkyPilot without user intervention.
+
+```shell
+sky jobs launch --env-file .env gptq.yaml
+```
 
 ## TensorRT-LLM ahead-of-time compliation
 
@@ -39,8 +56,8 @@ For `Mistral-7B-Instruct-v0.1`.
 
 ```shell
 sky launch \
-  --env S3_URL=s3://models.tne.ai/trtllm/Mistral-7B-Instruct-v0.1 \
-  --env OPTION_MODEL_ID=s3://models.tne.ai/hf/mistralai/ \
+  --env S3_URL=s3://model-repo/trtllm/Mistral-7B-Instruct-v0.1 \
+  --env OPTION_MODEL_ID=s3://model-repo/hf/mistralai/Mistral-7B-Instruct-v0.1 \
   --env OPTION_DTYPE=bf16 \
   --env OPTION_TENSOR_PARALLE_DEGREE=1 \
   --env OPTION_MAX_NUM_TOKENS=50000 \
