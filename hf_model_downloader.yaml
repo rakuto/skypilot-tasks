@@ -1,0 +1,47 @@
+name: hf-model-downloader
+
+resources:
+  cloud: aws
+  region: us-west-2
+  disk_size: 200
+  instance_type: m6i.2xlarge # At least 2xlarge instance necessary to clone and upload large models.
+  image_id: ami-0cf2b4e024cdb6960
+
+# These environment variables are supposed to be overriden by CLI flag --env-file or --env.
+#envs:
+#  MODEL_ID=""
+#  HF_USERNAME=""
+#  HF_TOKEN=""
+#  S3_URL=""
+#  AWS_SESSION_ID=""
+#  AWS_SECRET_ACCESS_KEY="
+#  AWS_SESSION_TOKEN=""
+
+setup: |
+  set -e
+  
+  sudo apt-get update
+  sudo apt-get install git-lfs unzip
+  if ! command -v aws &> /dev/null
+  then
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip 
+    sudo ./aws/install
+    rm -rf aws awscliv2.zip
+  fi
+
+run: |
+  set -e
+ 
+  echo "Cloning ${MODEL_ID}"
+  MODEL_NAME=${MODEL_ID##*/}
+  if [ ! -d "${MODEL_NAME}" ]; then
+    git clone --depth 1 https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/${MODEL_ID}
+  fi
+  rm -rf "${MODEL_NAME}/.git*"
+  
+  echo "Uploading ${MODEL_NAME} to ${S3_URL}"
+  aws s3 sync "${MODEL_NAME}" "${S3_URL}"
+  
+  echo "Cleaning up ${MODEL_NAME}"
+  rm -rf ${MODEL_NAME}
