@@ -13,11 +13,12 @@ cd download_model
 cat <<-EOF >> .env 
 MODEL_ID=meta-llama/Meta-Llama-3-8B-Instruct 
 S3_URL=s3://model-repo/hf/meta-llama/Meta-Llama-3-8B-Instruct
-HF_REPO_ID=me/Llama3-ChatQA-1.5-8B-GPTQ-4bit
-HF_USERNAME=me
-HF_TOKEN=hf-1234
+HF_USERNAME=<YOUR_HF_NAME>
+HF_TOKEN=<YOUR_HF_TOKEN>
 EOF
 ```
+
+Using `m6i.2xlarge` instance by default. Please update `resources.instrance_type` in case you need more beefy instance.
 
 ```shell
 sky launch --env-file .env task.yaml 
@@ -38,8 +39,8 @@ cat <<-EOF >> .env
 MODEL_ID=nvidia/Llama3-ChatQA-1.5-8B 
 # or MODEL_ID=s3://model-repo/hf/Llama3-ChatQA-1.5-8B
 S3_UPLOAD_URL=s3://model-repo/hf/Llama3-ChatQA-1.5-8B-GPTQ-4bit
-HF_REPO_ID=Rakuto/Llama3-ChatQA-1.5-8B-GPTQ-4bit
-HF_TOKEN=<HF_TOKEN>
+HF_REPO_ID=<YOUR_HF_REPO_ID>
+HF_TOKEN=<YOUR_HF_TOKEN>
 EOF
 ```
 
