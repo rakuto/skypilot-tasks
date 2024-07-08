@@ -36,7 +36,7 @@ Quantization settings:
 
     if model_id.startswith("s3://"):
         model_name = "./" + model_id.split("/")[-1]
-        command = "aws sync {} {}".format(model_id, model_name)
+        command = "aws s3 sync {} {}".format(model_id, model_name)
         print(command)
         os.system(command)
         model_id = model_name
